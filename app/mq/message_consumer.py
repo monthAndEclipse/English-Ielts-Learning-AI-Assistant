@@ -13,7 +13,6 @@ from app.schemas.mq_schema import TranslationRequest, QueueConfig
 
 logger = logging.getLogger(__name__)
 
-MAX_RETRY = 3
 
 class MessageConsumer:
     """消息消费器"""
@@ -106,17 +105,8 @@ class MessageConsumer:
             await message.reject(requeue=False)  # 不重新入队
 
         except Exception as e:
-            body = json.loads(message.body.decode('utf-8'))
-            retry_count = body.get("retry_count", 0)
-            if retry_count < MAX_RETRY:
-                body["retry_count"] = retry_count + 1
-                logger.warning(f"消息重试中，第 {body['retry_count']} 次: {e}")
-                await message.reject(requeue=False)
-                # 重新投递消息（模拟重试）
-                await self._retry_publish(body, message.routing_key)
-            else:
-                logger.error(f"消息超过最大重试次数，丢弃: {e}")
-                await message.reject(requeue=False)  # 可进入死信队列
+            logger.error(f"消息处理失败: {e}")
+            await message.reject(requeue=False)  # 依旧丢掉
 
     async def start_translation_consumer(
             self,
@@ -125,7 +115,6 @@ class MessageConsumer:
     ) -> None:
         """
         开始消费翻译队列
-
         Args:
             message_handler: 消息处理函数
             max_concurrent_messages: 最大并发处理消息数

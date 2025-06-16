@@ -6,7 +6,7 @@ class TranslateService:
     # 定义消息处理函数
     async def translate(self,request: TranslationRequest):
         # 处理翻译逻辑
-        logger.info(f"TranslationRequest:{TranslationRequest}")
+        logger.info(f"in")
 
 
 async def handle_translation_request(request: TranslationRequest) -> None:

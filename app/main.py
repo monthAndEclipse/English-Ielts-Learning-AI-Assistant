@@ -6,16 +6,7 @@ from contextlib import asynccontextmanager
 from app.db.database import engine
 from app.db.models import *
 import os
-# 导入RabbitMQ相关模块
-from app.utils.rabbitmq_utils import (
-    init_rabbitmq,
-    start_translation_listener,
-    send_translation_result,
-    check_rabbitmq_health,
-    stop_rabbitmq,
-    is_rabbitmq_ready
-)
-from app.schemas.mq_schema import TranslationRequest, EventType
+from app.mq.service_manager import service_manager
 import logging
 from app.services.translate_service import handle_translation_request
 
@@ -30,11 +21,9 @@ async def lifespan(app: FastAPI):
         # 数据库初始化
         SQLModel.metadata.create_all(engine)
         # 初始化RabbitMQ
-        await init_rabbitmq()
-
+        await service_manager.initialize()
         # 启动翻译服务监听器
-        await start_translation_listener(handle_translation_request)
-
+        await service_manager.start_translation_service(handle_translation_request)
         logger.info("应用启动完成")
         yield
 
@@ -44,7 +33,7 @@ async def lifespan(app: FastAPI):
     finally:
         # 应用关闭时执行
         logger.info("关闭应用...")
-        await stop_rabbitmq()
+        await service_manager.stop()
         logger.info("应用已关闭")
 
 app = FastAPI(lifespan=lifespan)
