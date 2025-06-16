@@ -1,19 +1,7 @@
 from pydantic_settings import BaseSettings
-from pydantic import field_validator, model_validator, Field
-from typing import Optional
-from enum import Enum
+from pydantic import  Field
 from app.utils.consul_utils import get_config
 import os
-
-class StorageProvider(str, Enum):
-    MINIO = "minio"
-    # 未来可扩展：AWS_S3 = "aws_s3", GOOGLE_CLOUD = "google_cloud"
-    @classmethod
-    def from_str(cls, name: str) -> "StorageProvider":
-        try:
-            return cls(name.lower())
-        except ValueError:
-            raise ValueError(f"Invalid storage provider: {name}")
 
 """
 统一配置，有些是os.getenv 有些是从consul获取的，统一在这里调整吧
@@ -21,54 +9,52 @@ class StorageProvider(str, Enum):
 """
 class Settings(BaseSettings):
     # 应用配置
-    app_name: str = "Cloud Storage Service"
+    app_name: str = "LLM Service"
     app_version: str = "1.0.0"
     debug: bool = False
 
-    # 存储配置
-    storage_provider: StorageProvider = StorageProvider.from_str(get_config("/default_storage_provider","minio"))
+    # 云存储服务配置
+    storage_service_container: str = Field(default="placeholder")
 
+    """RabbitMQ配置"""
+    host: str = Field(default="localhost")
+    port: int =  Field(default=5672)
+    username: str = Field(default="admin")
+    password: str = Field(default="admin")
+    virtual_host: str = Field(default="/")
 
-    # MinIO 配置
-    minio_access_key: str = os.getenv("MINIO_ACCESS_KEY")
-    minio_secret_key: str =  os.getenv("MINIO_SECRET_KEY")
-    minio_endpoint: str = Field(default="placeholder")
-    minio_secure: bool = Field(default=False)
-    minio_bucket_name: str = Field(default="placeholder")
+    # 连接配置
+    heartbeat: int = Field(default=30)
+    blocked_connection_timeout: int = Field(default=300)
 
-    # 文件配置
-    max_file_size: int = Field(default=10485760)  # default 10MB
-    # 预签名 URL 配置
-    presigned_url_expire_seconds: int = Field(default=3600)  # 1小时
-    allowed_file_types: list[str] = [
-        "image/jpeg", "image/png", "image/gif", "image/webp",
-        "application/pdf", "text/plain", "application/json",
-        "video/mp4", "video/avi", "audio/mpeg", "audio/wav"
-    ]
+    # 消费者配置
+    max_concurrent_messages: int = Field(default=5)
+    prefetch_count: int = Field(default=10)
 
+    # 翻译服务配置
+    max_concurrent_translations: int = Field(default=3)
+    max_chunk_size: int = Field(default=1000)
 
-    def load_from_consul(self):
-        """手动从 Consul 加载配置，延迟加载实现"""
-        self.storage_provider = StorageProvider.from_str(get_config("/default_storage_provider", self.storage_provider))
-        self.minio_endpoint = get_config("/minio_endpoint", self.minio_endpoint)
-        self.minio_bucket_name = get_config("/minio_bucket_name", self.minio_bucket_name)
-
-        raw_secure = get_config("/minio_secure", self.minio_secure)
-        self.minio_secure = raw_secure.lower() in ("true", "1", "yes") if isinstance(raw_secure, str) else bool(raw_secure)
-
-        self.max_file_size = int(get_config("/max_file_size", str(self.max_file_size)))
-        self.presigned_url_expire_seconds = int(get_config("/presigned_url_expire_seconds", str(self.presigned_url_expire_seconds)))
-
+    def load_lazy(self):
+        self.max_concurrent_messages = int(get_config("/max_concurrent_messages", self.max_concurrent_messages))
+        self.prefetch_count = int(get_config("/prefetch_count", self.prefetch_count))
+        self.max_concurrent_translations = int(get_config("/max_concurrent_translations", self.max_concurrent_translations))
+        self.max_chunk_size = int(get_config("/max_chunk_size", self.max_chunk_size))
+        self.virtual_host = get_config("/virtual_host", "/")
+        self.storage_service_container = get_config("/storage_service_container", self.storage_service_container)
+        """RabbitMQ配置"""
+        self.host: str = os.getenv("RABBITMQ_HOST")
+        self.port: int = int(os.getenv("RABBITMQ_PORT"))
+        self.username: str = os.getenv("RABBITMQ_USERNAME")
+        self.password: str = os.getenv("RABBITMQ_PASSWORD")
 
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
 
 
-from functools import lru_cache
-@lru_cache()
-# 全局配置实例,延迟加载
 def get_settings():
     settings = Settings()
-    settings.load_from_consul()
+    # 全局配置实例,延迟加载
+    settings.load_lazy()
     return settings

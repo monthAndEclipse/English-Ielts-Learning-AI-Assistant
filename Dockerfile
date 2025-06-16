@@ -16,10 +16,10 @@ RUN pip install -r requirements.txt
 COPY app/ ./app/
 
 # Expose FastAPI port
-EXPOSE 8002
+EXPOSE 8003
 
 # Temporary CMD: list /app and then keep container alive
 #CMD ls -lR /app && sleep infinity
 
 # Run FastAPI server
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8002"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8003"]
