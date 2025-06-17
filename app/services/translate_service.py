@@ -89,10 +89,15 @@ class TranslateService:
                 file_path=payload.file_path,
                 translation_end_time=datetime.now(timezone.utc).isoformat()
             )
-            await service_manager.publish_translation_result(QueueConfig.RESULT_QUEUES[EventType.DOC_TRANSLATION], result)
+            if payload.event_type.lower() ==  EventType.DOC_TRANSLATION :
+                await service_manager.publish_translation_result(QueueConfig.RESULT_QUEUES[EventType.DOC_TRANSLATION], result)
+            elif payload.event_type.lower() ==  EventType.IMAGE_TRANSLATION :
+                await service_manager.publish_translation_result(QueueConfig.RESULT_QUEUES[EventType.IMAGE_TRANSLATION], result)
+            elif payload.event_type.lower() == EventType.VIDEO_TRANSLATION:
+                await service_manager.publish_translation_result(QueueConfig.RESULT_QUEUES[EventType.VIDEO_TRANSLATION],result)
+
             logger.info(f"翻译任务完成: {task_id}")
             return True
-
         except Exception as e:
             logger.error(f"翻译任务处理失败: {task_id}, 错误: {e}")
             logger.exception(f"翻译任务处理失败详情")
