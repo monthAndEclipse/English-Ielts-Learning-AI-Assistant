@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     debug: bool = False
 
     # 云存储服务配置
-    storage_service_container: str = Field(default="placeholder")
+    storage_service_container: str = Field(default="cloud-storage-service-api")
 
     """RabbitMQ配置"""
     host: str = Field(default="localhost")
@@ -35,18 +35,30 @@ class Settings(BaseSettings):
     max_concurrent_translations: int = Field(default=3)
     max_chunk_size: int = Field(default=1000)
 
+    #llm 配置
+    llm_default_provider:str = Field(default="deepseek")
+    llm_default_model:str = Field(default="deepseek-chat")
+    llm_agent_role:str = Field(default="you are a translation engine")
+    llm_prompt_max_chars:int = Field(default=3000)
+
     def load_lazy(self):
         self.max_concurrent_messages = int(get_config("/max_concurrent_messages", self.max_concurrent_messages))
         self.prefetch_count = int(get_config("/prefetch_count", self.prefetch_count))
         self.max_concurrent_translations = int(get_config("/max_concurrent_translations", self.max_concurrent_translations))
         self.max_chunk_size = int(get_config("/max_chunk_size", self.max_chunk_size))
         self.virtual_host = get_config("/virtual_host", "/")
-        self.storage_service_container = get_config("/storage_service_container", self.storage_service_container)
         """RabbitMQ配置"""
         self.host: str = os.getenv("RABBITMQ_HOST")
         self.port: int = int(os.getenv("RABBITMQ_PORT"))
         self.username: str = os.getenv("RABBITMQ_USERNAME")
         self.password: str = os.getenv("RABBITMQ_PASSWORD")
+        """LLM配置"""
+        self.llm_default_provider: str =  get_config("/llm_default_provider", self.llm_default_provider)
+        self.llm_default_model: str = get_config("/llm_default_model", self.llm_default_model)
+        self.llm_agent_role: str = get_config("/llm_agent_role", self.llm_agent_role)
+        self.llm_prompt_max_chars: int = int(get_config("/llm_prompt_max_chars", self.llm_prompt_max_chars))
+        """云存储服务容器名称"""
+        self.storage_service_container: str = get_config("/storage_service_container", self.storage_service_container)
 
     class Config:
         env_file = ".env"

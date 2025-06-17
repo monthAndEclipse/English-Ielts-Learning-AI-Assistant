@@ -1,0 +1,58 @@
+==================================================================================
+理解下面的方案，帮我实现技术细节中的第3点到第9点， 
+其中rabbitmq我已经实现了，deepseek client也已经封装好了,云存储的对接也实现了，所以这几个都不要真正写，
+在被调用的地方说明一下就好了
+代码质量要高,不要全部代码写在一起。
+要分文件，这个可读性高，后面好维护
+
+# py llm大模型通用服务封装
+## 构架
+python + FastApi + docker(后期可转k8s)
+
+## 技术细节
+1. 监听rabbit mq队列并获取message payload 
+
+消息队列名称定义：llm.translation.queue
+
+消息体定义
+   ```json
+   {
+      "file_path":"xxx/{taskId}_content.json",
+      "jwt":"token",
+      "uuid": "taskId",
+      "event_type":"image_translation | doc_translation| video translation",
+      "prompt_template":"help me to translate following text to english,additional requirement/information:more formality, texts:{}",
+      "target_language": "english",
+      "instruction": "more formality",
+      "start_time": "发起的时间 YYYY-MM-DD HH24:mm:SS"
+   }
+   ```
+xxx/{taskId}_content.json 内容定义：
+
+```json
+{
+  "texts":[
+  "1.待翻译内容",
+  "2.待翻译内容",
+  "3.待翻译内容",
+  "4.待翻译内容"
+  ]
+}
+```
+2. 将file_path里面的文件下载到本地内存，转换为json数组。
+3. 根据llm-service设置的最大字符数，对数据进行切割
+4. 切割完成得到List[List[str]] chunks, 将每个chunk单独拿出，利用message payload里面的prompt_template进行format,将texts填充形成最终的prompts数组
+5. 开启并发控制，控制最大翻译数量,循环将prompts里面的每个prompt取出
+6. 开始并发请求，并记录taskId,event_type,translate_start_time，message_payload等参数到数据库
+7. 同时等待所有并发完成(deepseek接口支持Stream)，将所有结果顺序取出，重新合成为一个json字符串
+示例代码
+```
+semaphore = asyncio.Semaphore(max_concurrent_tasks)
+tasks = [
+    self.translate_chunk_with_semaphore(chunk, semaphore, target_language, provider, model_name, instruction)
+    for chunk in chunks
+]
+translated_chunks = await asyncio.gather(*tasks)
+```
+8. 将翻译内容替换掉{taskId}_content.json里的texts字段
+9. 重新将修改后的字节{taskId}_content.json上传到云存储，并根据taskId更新filepath和结束时间(translation_end_time)到数据库完成该次翻译任务
