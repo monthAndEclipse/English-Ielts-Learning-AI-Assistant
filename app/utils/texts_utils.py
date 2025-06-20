@@ -36,16 +36,16 @@ def format_prompts(chunks: List[List[str]], prompt_template: str) -> List[str]:
 
     for chunk in chunks:
         # 将chunk中的文本合并
-        combined_text = '\n'.join(chunk)
+        json_array_str = json.dumps(chunk, ensure_ascii=False)
 
         # 使用模板格式化
         try:
-            formatted_prompt = prompt_template.format(combined_text)
+            formatted_prompt = prompt_template.format(json_array_str)
             prompts.append(formatted_prompt)
         except Exception as e:
             logger.error(f"格式化prompt失败: {e}")
             # 使用简单替换作为后备方案
-            formatted_prompt = prompt_template.replace('{}', combined_text)
+            formatted_prompt = prompt_template.replace('{}', json_array_str)
             prompts.append(formatted_prompt)
 
     logger.info(f"生成 {len(prompts)} 个格式化的prompts")

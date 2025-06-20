@@ -54,8 +54,3 @@ class QueueConfig:
         EventType.IMAGE_TRANSLATION: "image.translation.result.queue",
         EventType.VIDEO_TRANSLATION: "video.translation.result.queue",
     }
-
-    @classmethod
-    def get_result_queue(cls, event_type: EventType) -> str:
-        """根据事件类型获取结果队列名称"""
-        return cls.P_RESULT_QUEUES.get(event_type, "default.translation.result.queue")

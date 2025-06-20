@@ -63,7 +63,7 @@ class TranslateService:
                 return False
             # 拼成一个个成品prompt
             prompts = format_prompts(chunks, payload.prompt_template)
-            logger.debug(f"开始并发翻译")
+            logger.info(f"prompts:{prompts}")
             # 并发翻译
             update_translation_task_fields(task_id, {
                 "translation_start_time": datetime.now(timezone.utc).isoformat(),
