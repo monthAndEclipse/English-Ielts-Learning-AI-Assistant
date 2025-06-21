@@ -12,6 +12,7 @@ import asyncio
 from app.mq.service_manager import service_manager
 from datetime import datetime, timezone
 from app.schemas.translation_task import TaskStatus
+from app.db.database import get_session
 
 logger = logging.getLogger(__name__)
 
@@ -49,66 +50,69 @@ class TranslateService:
 
     async def execute_translation_task(self, payload: TranslationRequest) -> bool:
         """执行实际的翻译任务"""
-        task_id = payload.uuid
-        try:
-            # 步骤1: 下载并解析内容文件
-            original_json = download_file_text_from_storage_sync(payload.file_path, payload.jwt)
-            if not original_json:
-                update_translation_task_fields(task_id, {"status":TaskStatus.FAIL,"error_message":"内容文件为空"})
-                return False
-            # 切割
-            chunks = split_json_chunks(original_json["texts"], self.settings.llm_prompt_max_chars)
-            if not chunks:
-                update_translation_task_fields(task_id, {"status":TaskStatus.FAIL,"error_message": "文本切割后为空"})
-                return False
-            # 拼成一个个成品prompt
-            prompts = format_prompts(chunks, payload.prompt_template)
-            logger.info(f"prompts:{prompts}")
-            # 并发翻译
-            update_translation_task_fields(task_id, {
-                "translation_start_time": datetime.now(timezone.utc).isoformat(),
-                "status": TaskStatus.PROCESSING
-            })
-            translated_contents = await self.translate_large_text(prompts)
-            # 填回原内容
-            original_json["texts"] = translated_contents
-            # 转成字符数组上传
-            object_info = upload_file_to_storage_sync(payload.jwt,
-                                                      json.dumps(original_json, ensure_ascii=False).encode("utf-8"),
-                                                      f"translated_{payload.filename}")
-            # 更新数据库
-            if not object_info or not object_info["data"]:
-                update_translation_task_fields(task_id, {"status":TaskStatus.FAIL,"error_message": "翻译后的文件上传云存储失败"})
-                return False
-
-            # 发送完成的消息到mq
-            result = json.dumps(TranslationResult(
-                uuid=payload.uuid,
-                jwt=payload.jwt,
-                file_path=object_info["data"]["file_path"],
-                translation_end_time=datetime.now(timezone.utc).isoformat()
-            ).model_dump(),ensure_ascii=False)
-
-            if payload.event_type.lower() ==  EventType.DOC_TRANSLATION :
-                await service_manager.publish_msg(QueueConfig.P_RESULT_QUEUES[EventType.DOC_TRANSLATION], result)
-            elif payload.event_type.lower() ==  EventType.IMAGE_TRANSLATION :
-                await service_manager.publish_msg(QueueConfig.P_RESULT_QUEUES[EventType.IMAGE_TRANSLATION], result)
-            elif payload.event_type.lower() == EventType.VIDEO_TRANSLATION:
-                await service_manager.publish_msg(QueueConfig.P_RESULT_QUEUES[EventType.VIDEO_TRANSLATION],result)
-            update_translation_task_fields(task_id, {
-                "result_file_path": object_info["data"]["file_path"],
-                "status": TaskStatus.COMPLETE,
-                "translation_end_time": datetime.now(timezone.utc).isoformat()
-            })
-            logger.info(f"翻译任务完成: {task_id}")
-            return True
-        except Exception as e:
-            logger.exception(f"翻译任务处理失败详情")
-            update_translation_task_fields(task_id, {
-                "error_message": f"{str(e)}",
-                "status":TaskStatus.FAIL
+        with get_session() as session:
+            task_id = payload.uuid
+            try:
+                # 步骤1: 下载并解析内容文件
+                original_json = download_file_text_from_storage_sync(payload.file_path, payload.jwt)
+                if not original_json:
+                    update_translation_task_fields(session,task_id, {"status":TaskStatus.FAIL,"error_message":"内容文件为空"})
+                    return False
+                # 切割
+                chunks = split_json_chunks(original_json["texts"], self.settings.llm_prompt_max_chars)
+                if not chunks:
+                    update_translation_task_fields(session,task_id, {"status":TaskStatus.FAIL,"error_message": "文本切割后为空"})
+                    return False
+                # 拼成一个个成品prompt
+                prompts = format_prompts(chunks, payload.prompt_template)
+                logger.info(f"prompts:{prompts}")
+                # 并发翻译
+                update_translation_task_fields(session,task_id, {
+                    "translation_start_time": datetime.now(timezone.utc).isoformat(),
+                    "status": TaskStatus.PROCESSING
                 })
-            return False
+                translated_contents = await self.translate_large_text(prompts)
+                # 填回原内容
+                original_json["texts"] = translated_contents
+                # 转成字符数组上传
+                object_info = upload_file_to_storage_sync(payload.jwt,
+                                                          json.dumps(original_json, ensure_ascii=False).encode("utf-8"),
+                                                          f"translated_{payload.filename}")
+                # 更新数据库
+                if not object_info or not object_info["data"]:
+                    update_translation_task_fields(session,task_id, {"status":TaskStatus.FAIL,"error_message": "翻译后的文件上传云存储失败"})
+                    return False
+
+                # 发送完成的消息到mq
+                result = json.dumps(TranslationResult(
+                    uuid=payload.uuid,
+                    jwt=payload.jwt,
+                    file_path=object_info["data"]["file_path"],
+                    translation_end_time=datetime.now(timezone.utc).isoformat()
+                ).model_dump(),ensure_ascii=False)
+
+                if payload.event_type.lower() ==  EventType.DOC_TRANSLATION :
+                    await service_manager.publish_msg(QueueConfig.P_RESULT_QUEUES[EventType.DOC_TRANSLATION], result)
+                elif payload.event_type.lower() ==  EventType.IMAGE_TRANSLATION :
+                    await service_manager.publish_msg(QueueConfig.P_RESULT_QUEUES[EventType.IMAGE_TRANSLATION], result)
+                elif payload.event_type.lower() == EventType.VIDEO_TRANSLATION:
+                    await service_manager.publish_msg(QueueConfig.P_RESULT_QUEUES[EventType.VIDEO_TRANSLATION],result)
+                update_translation_task_fields(task_id, {
+                    "result_file_path": object_info["data"]["file_path"],
+                    "status": TaskStatus.COMPLETE,
+                    "translation_end_time": datetime.now(timezone.utc).isoformat()
+                })
+                logger.info(f"翻译任务完成: {task_id}")
+                session.commit()
+                return True
+            except Exception as e:
+                logger.exception(f"翻译任务处理失败详情")
+                update_translation_task_fields(session,task_id, {
+                    "error_message": f"{str(e)}",
+                    "status":TaskStatus.FAIL
+                    })
+                session.commit()
+                return False
 
     async def translate_large_text(self, prompts: List[str]):
         max_concurrent_tasks = int(self.settings.llm_max_concurrent_task)
@@ -162,17 +166,20 @@ class TranslateService:
 # 创建全局服务实例
 translate_service = TranslateService()
 
-
 async def handle_translation_request(request: TranslationRequest) -> None:
-    try:
-        #立即创建任务记录入库,task_id唯一，这里后期可以考虑加入分布式锁，但数据库压力感觉不会太大
-        task_created = await translate_service.create_task_record(request)
-        if not task_created:
-            logger.error(f"入库失败")
-            return
-        # 启动后台线程处理翻译任务
-        translate_service.run_translation_in_background(request)
-        # 立即返回成功响应
-        logger.info(f"翻译请求已接收并开始处理: {request.uuid}")
-    except Exception as e:
-        logger.error(f"处理翻译请求异常: {getattr(request, 'uuid', 'unknown')}, 错误: {e}")
+
+    with get_session() as session:
+        try:
+            #立即创建任务记录入库,task_id唯一，这里后期可以考虑加入分布式锁，但数据库压力感觉不会太大
+            task_created = create_translation_task(session,request)
+            session.commit()
+            if not task_created:
+                logger.error(f"入库失败")
+                return
+            # 启动后台线程处理翻译任务
+            translate_service.run_translation_in_background(request)
+            # 立即返回成功响应
+            logger.info(f"翻译请求已接收并开始处理: {request.uuid}")
+        except Exception as e:
+            logger.error(f"处理翻译请求异常: {getattr(request, 'uuid', 'unknown')}, 错误: {e}")
+
