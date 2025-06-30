@@ -13,7 +13,7 @@ logger =get_logger(__name__)
 def download_file_text_from_storage_sync(file_path: str, token: str):
     # 对 file_path 做 URL 编码（尤其是包含斜杠、空格等）
     encoded_path = urllib.parse.quote(file_path, safe="")
-    url = f"http://{get_settings().storage_service_container}/api/v1/storage/download/{encoded_path}"
+    url = f"http://{get_settings().storage_service_container}/v1/storage/download/{encoded_path}"
     headers = {"Authorization": f"Bearer {token}"}
     try:
         response = requests.get(url, headers=headers, timeout=30)
@@ -36,7 +36,7 @@ def upload_file_to_storage_sync(
         filename: str,
         content_type: str = "application/octet-stream"
 ):
-    url = f"http://{get_settings().storage_service_container}/api/v1/storage/upload"
+    url = f"http://{get_settings().storage_service_container}/v1/storage/upload"
     headers = {"Authorization": f"Bearer {token}"}
     if not file_bytes or not filename:
         raise ValueError("file_bytes or filename is empty")
