@@ -52,7 +52,7 @@ class ConsulServiceRegistrar:
             key = item['Key'].replace(self.config_prefix, "")
             val = item['Value'].decode('utf-8') if item['Value'] else None
             self.config[key] = val
-        logger.info(f"[Consul] 🔧 拉取配置成功: {self.config}")
+        logger.debug(f"[Consul] 🔧 拉取配置成功: {self.config}")
 
     def start_config_updater(self):
         def loop():

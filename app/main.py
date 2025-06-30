@@ -19,6 +19,19 @@ async def lifespan(app: FastAPI):
     """FastAPI 应用生命周期管理"""
     logger.info("启动应用...")
     try:
+        # 启动 Consul 注册 + 配置拉取
+        consul_client = ConsulServiceRegistrar(
+            service_name=os.getenv("SERVICE_NAME"),
+            service_port=int(os.getenv("SERVICE_PORT")),
+            consul_host=os.getenv("CONSUL_HOST"),
+            config_prefix=os.getenv("CONSUL_CONFIG_PREFIX"),
+            update_interval=59,
+            hostname=os.getenv("HOSTNAME"),
+        )
+        consul_client.register_service()
+        consul_client.start_config_updater()
+        set_global_config(consul_client)
+
         # 数据库初始化
         SQLModel.metadata.create_all(engine)
         # 初始化RabbitMQ
@@ -39,18 +52,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# 启动 Consul 注册 + 配置拉取
-consul_client = ConsulServiceRegistrar(
-    service_name=os.getenv("SERVICE_NAME"),
-    service_port=int(os.getenv("SERVICE_PORT")),
-    consul_host=os.getenv("CONSUL_HOST"),
-    config_prefix=os.getenv("CONSUL_CONFIG_PREFIX"),
-    update_interval=59,
-    hostname=os.getenv("HOSTNAME"),
-)
-consul_client.register_service()
-consul_client.start_config_updater()
-set_global_config(consul_client)
+
 
 #路由设置
 # app.include_router(log_router, prefix="/api/v1/log", tags=["Logs"])

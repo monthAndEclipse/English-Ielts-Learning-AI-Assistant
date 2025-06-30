@@ -23,8 +23,8 @@ class TranslationRequest(BaseModel):
     event_type: EventType = Field(..., description="事件类型")
     prompt_template: str = Field(..., description="提示模板")
     target_language: str = Field(..., description="目标语言")
-    instruction: str = Field(..., description="额外指令")
-    start_time: str = Field(..., description="发起时间 YYYY-MM-DD HH24:mm:SS")
+    instruction: Optional[str] = Field(..., description="额外指令")
+    start_time: Optional[str] = Field(..., description="发起时间 YYYY-MM-DD HH24:mm:SS")
 
     class Config:
         use_enum_values = True
