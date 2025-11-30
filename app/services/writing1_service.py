@@ -30,7 +30,7 @@ class Writing1PromptService(BasePromptService, ABC):
         task_config = {
             "topic": data.domain,
             "subtopic": random.choice(random_subtopics_json["subtopics"]),
-            "chart": random.choice(self.chart_types),
+            "chart": data.question_type,
             "time": random.choice(self.time_patterns),
             "dimension": random.choice(self.dimensions),
             "complexity": random.choice(self.complexity),
