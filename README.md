@@ -97,8 +97,9 @@ npm install
 pnpm install
 # or
 yarn install
+```
 
-### 🚀 Backend Installation & Startup
+## 🚀 Backend Installation & Startup
 ```bash
 python -m venv venv
 source venv/bin/activate   # macOS / Linux
