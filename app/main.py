@@ -31,8 +31,8 @@ STATIC_DIR = BASE_DIR / "app" / "static"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if not app.state:
-        port = app.state.port  # ✅ 关键点
+    port = getattr(app.state, "port", None)  # 获取 port，如果没设置返回 None
+    if port is not None:
         print("\nEnglish Learning Tool Started Successfully!")
         print(f"Open in browser: http://127.0.0.1:{port}\n")
         webbrowser.open(f"http://127.0.0.1:{port}")
