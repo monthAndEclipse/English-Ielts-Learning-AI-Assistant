@@ -1,0 +1,19 @@
+{
+    "errors": {
+      "Invalid login credentials": "Invalid login credentials",
+      "User already registered": "User already registered",
+      "unknownError": "An unknown error occurred"
+    },
+    "messages": {
+      "signupSuccess": "Signup successful, please check your email"
+    },
+    "placeholders": {
+      "email": "Enter your email",
+      "password": "Enter your password"
+    },
+    "buttons": {
+      "login": "Login",
+      "register": "Register"
+    }
+  }
+  

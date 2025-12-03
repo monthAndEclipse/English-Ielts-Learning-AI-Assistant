@@ -1,0 +1,29 @@
+{
+    "errors": {
+      "AuthApiError": "登录凭证无效",
+      "User already registered": "用户已注册",
+      "UnknownError": "发生未知错误"
+    },
+    "messages": {
+      "SignupSuccess": "注册成功，请检查你的邮箱并确认注册"
+    },
+    "placeholders": {
+      "Email": "请输入邮箱",
+      "Password": "请输入密码"
+    },
+    "buttons": {
+      "Login": "登录",
+      "Register": "注册"
+    },
+    "uploads":{
+      "Success":"文件上传成功",
+      "Fail":"文件上传失败,请重试",
+      "DeleteSuccess":"删除文件成功",
+      "DeleteFail":"删除文件错误,请重试",
+      "ValidatedFail":"请完善所有必填项",
+      "SubmitSuccess":"提交成功",
+      "SaveDraftSuccess":"保存草稿成功",
+      "SaveFail_23505":"已存在提交记录"
+    }
+  }
+  
