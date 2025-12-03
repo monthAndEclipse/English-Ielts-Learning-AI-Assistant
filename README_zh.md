@@ -5,6 +5,9 @@
 
 ---
 
+## 注意
+- 只对接了deepseek
+
 ## 主页截图
 ![Home Page](screenshot/zh.png)
 

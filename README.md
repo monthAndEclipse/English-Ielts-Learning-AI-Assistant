@@ -5,6 +5,9 @@ An AI-powered learning application designed for **IELTS exam preparation**, cove
 - 中文版: [README_zh.md](README_zh.md)
 ---
 
+## notice
+- only implement deepseek API
+
 ## 🖼 Screenshots
 
 ### Home Page
