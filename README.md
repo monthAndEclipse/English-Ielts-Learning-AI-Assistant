@@ -1,7 +1,8 @@
 # 📘 IELTS Learning App
 
 An AI-powered learning application designed for **IELTS exam preparation**, covering core skills such as writing, reading, speaking, vocabulary, and language expression to help self-learners improve systematically.
-
+- English: README.md
+- 中文版: [README_zh.md](README_zh.md)
 ---
 
 ## 🖼 Screenshots
